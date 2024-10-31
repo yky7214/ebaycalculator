@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>eBay利益計算ツール</title>
+    <style>
+        .info-icon {
+            cursor: help;
+            color: #666;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-4 max-w-md">
+        <h1 class="text-2xl font-bold mb-4">eBay利益計算ツール</h1>
+        
+        <form id="calculator-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium">売値 (USD)</label>
+                <input type="number" id="selling-price" required step="0.01" 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium">仕入れ値 (JPY)</label>
+                <input type="number" id="cost-price" required
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium">送料 (JPY)</label>
+                <input type="number" id="shipping-cost" required
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium">売上税率 (%)
+                    <span class="info-icon" title="カリフォルニア州：10.25%&#13;ニューヨーク州：8.875%">ⓘ</span>
+                </label>
+                <input type="number" id="tax-rate" required step="0.01" value="10.25"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium">為替レート (JPY/USD)</label>
+                <input type="number" id="exchange-rate" required step="0.01" placeholder="例：147.00"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            </div>
+            
+            <button type="submit" 
+                    class="w-full bg-blue-500 text-white rounded-md py-2 hover:bg-blue-600">
+                計算する
+            </button>
+        </form>
+        
+        <div id="result" class="mt-4 p-4 bg-gray-100 rounded-md"></div>
+        
+        <div class="mt-4 text-sm text-gray-600">
+            <p>※ eBay両替手数料3.0%を含めて計算しています</p>
+            <p>※ 入力する為替レートは、取引時の為替レートから3円程度低めに設定することをお勧めします</p>
+        </div>
+    </div>
+
+    <script>
+        function calculateProfit(sellingPrice, costPriceJPY, shippingCostJPY, taxRate, exchangeRate) {
+            const salesTax = taxRate / 100;
+            // 為替レートにeBayの両替手数料3%を反映
+            const effectiveRate = exchangeRate * 0.97;
+            
+            // 売上からeBay手数料を計算（税込み売上に対して14.6%）
+            const salesUSD = sellingPrice;
+            const salesWithTaxUSD = salesUSD * (1 + salesTax);
+            const ebayFeeUSD = (salesWithTaxUSD * 0.146 + 0.4) * 1.1; // 手数料に消費税10%
+            
+            // 売上と経費を円換算
+            const salesJPY = salesUSD * effectiveRate;
+            const ebayFeeJPY = ebayFeeUSD * effectiveRate;
+            
+            // 利益計算
+            const profit = salesJPY - costPriceJPY - shippingCostJPY - ebayFeeJPY;
+            
+            return {
+                profit: Math.round(profit),
+                ebayFeeJPY: Math.round(ebayFeeJPY),
+                salesJPY: Math.round(salesJPY),
+                effectiveRate: effectiveRate
+            };
+        }
+
+        document.getElementById('calculator-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const sellingPrice = parseFloat(document.getElementById('selling-price').value);
+            const costPrice = parseFloat(document.getElementById('cost-price').value);
+            const shippingCost = parseFloat(document.getElementById('shipping-cost').value);
+            const taxRate = parseFloat(document.getElementById('tax-rate').value);
+            const exchangeRate = parseFloat(document.getElementById('exchange-rate').value);
+            
+            const result = calculateProfit(sellingPrice, costPrice, shippingCost, taxRate, exchangeRate);
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <div class="space-y-2">
+                    <p class="font-bold">予想利益: ${result.profit.toLocaleString()}円</p>
+                    <p class="text-sm">内訳:</p>
+                    <p class="text-sm ml-4">売上: ${result.salesJPY.toLocaleString()}円</p>
+                    <p class="text-sm ml-4">仕入: ${costPrice.toLocaleString()}円</p>
+                    <p class="text-sm ml-4">送料: ${shippingCost.toLocaleString()}円</p>
+                    <p class="text-sm ml-4">手数料等: ${result.ebayFeeJPY.toLocaleString()}円</p>
+                    <p class="text-sm mt-2">実効為替レート: ${result.effectiveRate.toFixed(2)}円/USD (両替手数料3%込み)</p>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html>
